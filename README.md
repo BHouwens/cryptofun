@@ -21,3 +21,4 @@ I could put a list here but I can't do a better job than the one done on this [r
 ### TODO
 
 - Implement post-quantum RingLWE to a working degree
+- Switch the big int library to Ramp
