@@ -9,7 +9,7 @@ use cryptopunk::hash::crypto::HashAlgorithm;
 use cryptopunk::encryption::AsymmetricKeyMode;
 
 
-/*--- Structs ---*/
+/*---- STRUCTS ----*/
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RSA {
@@ -29,13 +29,13 @@ pub struct RSA {
 }
 
 
-/*--- Constants ---*/
+/*---- CONSTANTS ----*/
 
 const RSA_BLINDING_LENGTH: usize = 28;
 const RSA_CHUNK: usize = 30;
 
 
-/*--- Implementation ---*/
+/*---- IMPLEMENTATIONS ----*/
 
 impl RSA {
 

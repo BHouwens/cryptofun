@@ -28,7 +28,7 @@ pub enum AESMode {
     GCM
 }
 
-/*--- Implementation ---*/
+/*---- IMPLEMENTATIONS ----*/
 
 impl AES {
 

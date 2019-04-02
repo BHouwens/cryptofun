@@ -1,45 +1,41 @@
 use std::fmt;
 use std::ops::{ Rem, Shl };
-use num_traits::{ One, Zero, Signed };
-use num_bigint::{ BigUint, BigInt, ToBigUint, ToBigInt, Sign };
+use ramp::Int;
 
-/**
- * We consider two types of curves equations:
- * 1. Short Weierstrass y^2 = x^3 + A x + B     mod P   (SEC1 + RFC 4492)
- * 2. Montgomery,       y^2 = x^3 + A x^2 + x   mod P   (Curve25519 + draft)
- * 
- * The third main type, Twisted Edwards, can be introduced at a later date. 
- * A reference implementation of Ed25519 in Python can be found here: 
- * https://tools.ietf.org/html/draft-josefsson-eddsa-ed25519-03#appendix-A
- * 
- * In the two current cases, a generator G for a prime-order subgroup is fixed. 
- * In short weierstrass, this subgroup is actually the whole curve, and its
- * cardinal is denoted by N.
- *
- * In the case of Short Weierstrass curves, our code requires that N is an odd
- * prime.
- *
- * In the case of Montgomery curves, nbits is not the size of N
- * but the required size for private keys.
- */
 
+/*---- ENUMS ----*/
+
+/// We consider two types of curves equations:
+/// 1. Short Weierstrass y^2 = x^3 + A x + B     mod P   (SEC1 + RFC 4492)
+/// 2. Montgomery,       y^2 = x^3 + A x^2 + x   mod P   (Curve25519 + draft)
+/// 
+/// The third main type, Twisted Edwards, can be introduced at a later date. 
+/// A reference implementation of Ed25519 in Python can be found here: 
+/// https://tools.ietf.org/html/draft-josefsson-eddsa-ed25519-03#appendix-A
+/// 
+/// In the two current cases, a generator G for a prime-order subgroup is fixed. 
+/// In short weierstrass, this subgroup is actually the whole curve, and its
+/// cardinal is denoted by N.
+///
+/// In the case of Short Weierstrass curves, our code requires that N is an odd
+/// prime.
+///
+/// In the case of Montgomery curves, nbits is not the size of N
+/// but the required size for private keys.
 #[derive(PartialEq)]
 pub enum ECPCurveShape {
     ShortWeierstrass,
     Montgomery
 }
 
-/**
- * Extreme caution is advised if there is an intention to use any of the 
- * NIST curves. More information on why can be found here: 
- * https://www.schneier.com/blog/archives/2013/09/the_nsa_is_brea.html#c1675929
- * 
- * The rigidity of NIST curves, as well as many others for comparison, can also 
- * be found here: https://safecurves.cr.yp.to/rigid.html
- * 
- * Further support for Twisted Edwards curves will be provided in future
- */
-
+/// Extreme caution is advised if there is an intention to use any of the 
+/// NIST curves. More information on why can be found here: 
+/// https://www.schneier.com/blog/archives/2013/09/the_nsa_is_brea.html#c1675929
+/// 
+/// The rigidity of NIST curves, as well as many others for comparison, can also 
+/// be found here: https://safecurves.cr.yp.to/rigid.html
+/// 
+/// Further support for Twisted Edwards curves will be provided in future
 #[derive(PartialEq, Clone)]
 pub enum ECPSupportedCurves {
     SECP256R1,      // 256-bits NIST curve
@@ -52,39 +48,38 @@ pub enum ECPSupportedCurves {
 }
 
 
-/*----- Structs -----*/
+/*---- STRUCTS ----*/
 
 #[derive(Clone)]
 pub struct ECPGroup {
-    name: &'static str, // Internal group identifier
-    pub p: BigInt, // Prime modulus
-    pub a: BigUint, // 1. A in the equation, or 2. (A + 2) / 4 
-    pub b: BigUint, // 1. B in the equation, or 2. unused
-    pub g: ECPPoint, // Generator of the (sub)group used
-    pub n: BigUint, // 1. the order of G, or 2. unused
-    pub nbits: usize, // number of bits in 1. P, or 2. private keys
-    pub t: Vec<ECPPoint>, // pre-computed point for comb method multiplication
-    pub t_size: usize // size for pre-computed point
+    name: &'static str,     // Internal group identifier
+    pub p: Int,             // Prime modulus
+    pub a: Int,             // 1. A in the equation, or 2. (A + 2) / 4 
+    pub b: Int,             // 1. B in the equation, or 2. unused
+    pub g: ECPPoint,        // Generator of the (sub)group used
+    pub n: Int,             // 1. the order of G, or 2. unused
+    pub nbits: usize,       // number of bits in 1. P, or 2. private keys
+    pub t: Vec<ECPPoint>,   // pre-computed point for comb method multiplication
+    pub t_size: usize       // size for pre-computed point
 }
 
 #[derive(Clone, Debug)]
 pub struct ECPPoint {
-    pub x: BigInt,
-    pub y: Option<BigInt>,
-    pub z: BigInt
+    pub x: Int,
+    pub y: Option<Int>,
+    pub z: Int
 }
 
 
-/*----- Implementations -----*/
+/*---- IMPLEMENTATIONS ----*/
 
 impl ECPGroup {
 
-    /**
-     * Initialize a group
-     * 
-     * `curve` - Elliptic curve to use
-     */
-
+    /// Initialize a group
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `curve` - Elliptic curve to use
     pub fn new(curve: ECPSupportedCurves) -> Self {
         match curve {
             ECPSupportedCurves::SECP256R1 => create_from_domain_parameters(&SECP256R1),
@@ -94,19 +89,19 @@ impl ECPGroup {
             ECPSupportedCurves::BP384R1 => create_from_domain_parameters(&BP384R1),
             ECPSupportedCurves::BP521R1 => create_from_domain_parameters(&BP521R1),
             ECPSupportedCurves::Curve25519 => {
-                let generator_point = ECPPoint::new(&9.to_bigint().unwrap(), None);
-                let mut p = BigInt::one();
+                let generator_point = ECPPoint::new(&9.to_Int().unwrap(), None);
+                let mut p = Int::one();
 
                 p = p.shl(255);
-                p = p - 19.to_bigint().unwrap();
+                p = p - 19.to_Int().unwrap();
 
                 return ECPGroup {
                     name: "Curve25519",
                     p: p,
-                    a: 486662.to_biguint().unwrap(),
-                    b: BigUint::one(),
+                    a: 486662.to_Int().unwrap(),
+                    b: Int::one(),
                     g: generator_point.clone(),
-                    n: BigUint::one(),
+                    n: Int::one(),
                     nbits: 254,
                     t: vec![generator_point],
                     t_size: 0
@@ -115,11 +110,7 @@ impl ECPGroup {
         }
     }
 
-
-    /**
-     * Get the shape of the group curve
-     */
-
+    /// Get the shape of the group curve
     pub fn get_curve_shape(&self) -> ECPCurveShape {
         match &self.g.y {
             &Some(ref _y) => ECPCurveShape::ShortWeierstrass,
@@ -127,27 +118,23 @@ impl ECPGroup {
         }
     }
 
-
-    /**
-     * Mod P calculation used in numerous instances for 
-     * value generation
-     * 
-     * `n` - Value to mod
-     */
-
-    pub fn mod_p(&self, n: &BigInt) -> BigInt {
+    /// Mod P calculation used in numerous instances for 
+    /// value generation
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `n` - Value to mod
+    pub fn mod_p(&self, n: &Int) -> Int {
         n.clone().rem(&self.p)
     }
 
-
-    /**
-     * Reduce a mod p in-place. We know P, N and the result are 
-     * positive, so sub_abs is correct, and a bit faster.
-     * 
-     * `n` - Value to reduce
-     */
-
-    pub fn mod_reduce(&self, n: &BigInt) -> BigInt {
+    /// Reduce a mod p in-place. We know P, N and the result are 
+    /// positive, so sub_abs is correct, and a bit faster.
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `n` - Value to reduce
+    pub fn mod_reduce(&self, n: &Int) -> Int {
         let mut n_clone = n.clone();
         let p_int = self.p.clone();
 
@@ -160,24 +147,23 @@ impl ECPGroup {
         n_clone
     }
 
-
-    /**
-     * Increase a mod p in-place if the value is less than 0
-     * 
-     * `n` - Value to increase
-     */
-
-    pub fn mod_increase(&self, n: &BigInt) -> BigInt {
+    /// Increase a mod p in-place if the value is less than 0
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `n` - Value to increase
+    pub fn mod_increase(&self, n: &Int) -> Int {
         let mut n_clone = n.clone();
 
-        if n < &BigInt::zero() && n != &BigInt::zero() {
-            while n_clone < BigInt::zero() {
+        if n < &Int::zero() && n != &Int::zero() {
+            while n_clone < Int::zero() {
                 n_clone = &n_clone + &self.p;
             }
         }
 
         n_clone
     }
+
 }
 
 
@@ -185,41 +171,32 @@ impl ECPGroup {
 
 impl ECPPoint {
 
-    /**
-     * Initialize a new point
-     * 
-     * `x` - X coordinate
-     * `y` - Y coordinate
-     */
-
-    pub fn new(x: &BigInt, y: Option<BigInt>) -> Self {
+    /// Initialize a new point
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `x` - X coordinate
+    /// * `y` - Y coordinate
+    pub fn new(x: &Int, y: Option<Int>) -> Self {
         ECPPoint {
             x: x.clone(),
             y: y,
-            z: BigInt::one()
+            z: Int::one()
         }
     }
 
-
-    /**
-     * Set point to zero
-     */
-
+    /// Set point to zero
     pub fn set_to_zero(&mut self) -> () {
-        self.x = BigInt::one();
-        self.y = Some(BigInt::one());
-        self.z = BigInt::zero();
+        self.x = Int::one();
+        self.y = Some(Int::one());
+        self.z = Int::zero();
     }
 
-
-    /**
-     * Checks whether point is at zero
-     */
-
+    /// Checks whether point is at zero
     pub fn is_zero(&self) -> bool {
-        if self.x == BigInt::zero()
-        && self.y == Some(BigInt::zero())
-        && self.z == BigInt::zero() {
+        if self.x == Int::zero()
+        && self.y == Some(Int::zero())
+        && self.z == Int::zero() {
             return true;
         }
 
@@ -238,8 +215,9 @@ impl fmt::Display for ECPPoint {
 }
 
 
-/*---- Domain Parameters ----*/
+/*---- DOMAIN PARAMETERS (These are constant) ----*/
 
+/// The structure of an ECC curve domain parameter set
 struct ECurveDomainParameters {
     name: &'static str,
     p: &'static [u8],
@@ -250,20 +228,25 @@ struct ECurveDomainParameters {
     n: &'static [u8]
 }
 
+/// Creates an ECPGroup from a given set of domain parameters
+/// 
+/// ### Arguments
+/// 
+/// * `from`    - Domain parameters to generate from
 fn create_from_domain_parameters(from: &ECurveDomainParameters) -> ECPGroup {
     let generator_point = ECPPoint::new(
-        &BigUint::from_bytes_le(from.gx).to_bigint().unwrap(), 
-        Some(BigUint::from_bytes_le(from.gy).to_bigint().unwrap())
+        &Int::from_bytes_le(from.gx).to_Int().unwrap(), 
+        Some(Int::from_bytes_le(from.gy).to_Int().unwrap())
     );
 
     ECPGroup {
         name: from.name,
-        p: BigInt::from_bytes_le(Sign::Plus, from.p),
-        a: BigUint::from_bytes_le(from.a),
-        b: BigUint::from_bytes_le(from.b),
+        p: Int::from_bytes_le(Sign::Plus, from.p),
+        a: Int::from_bytes_le(from.a),
+        b: Int::from_bytes_le(from.b),
         g: generator_point.clone(),
-        n: BigUint::from_bytes_le(from.n),
-        nbits: BigUint::from_bytes_le(from.n).bits(),
+        n: Int::from_bytes_le(from.n),
+        nbits: Int::from_bytes_le(from.n).bits(),
         t: vec![generator_point],
         t_size: 0
     }
@@ -271,15 +254,15 @@ fn create_from_domain_parameters(from: &ECurveDomainParameters) -> ECPGroup {
 
 
 /*---- NIST Curves ----*/
-/**
- * Support for NIST curves is provided for 256, 384 and 521 bits.
- * Each entry is the regular version of the curve; Koblitz support is 
- * not provided, but can be added in future with relative ease.
- * 
- * All domain parameters for NIST curves have been sourced from the 
- * Standards of Efficient Cryptography (SEC) 2000, and can be found here:
- * http://www.secg.org/SEC2-Ver-1.0.pdf
- */
+
+/// Support for NIST curves is provided for 256, 384 and 521 bits.
+/// Each entry is the regular version of the curve; Koblitz support is 
+/// not provided, but can be added in future with relative ease.
+/// 
+/// All domain parameters for NIST curves have been sourced from the 
+/// Standards of Efficient Cryptography (SEC) 2000, and can be found here:
+/// http://www.secg.org/SEC2-Ver-1.0.pdf
+
 
 /*---- SECP256R1 ----*/
 

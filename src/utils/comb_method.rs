@@ -1,18 +1,15 @@
-/**
- * Comb method multiplication is used as a means of preventing or mitigating
- * side channel attacks (SCAs) on elliptic curve cryptosystems, in particular 
- * side power attacks (SPAs) on embedded systems.
- * 
- * The basic comb method is described in GECC 3.44 as an example. We use a
- * modified version that provides resistance to SPAs by avoiding zero
- * digits in the representation as in:
- * 
- * HEDABOU, Mustapha, PINEL, Pierre, et B'EN'ETEAU, Lucien. A comb method to
- * render ECC resistant against Side Channel Attacks. IACR Cryptology
- * ePrint Archive, 2004, vol. 2004, p. 342.
- * <http://eprint.iacr.org/2004/342.pdf>
- *
- */
+/// Comb method multiplication is used as a means of preventing or mitigating
+/// side channel attacks (SCAs) on elliptic curve cryptosystems, in particular 
+/// side power attacks (SPAs) on embedded systems.
+/// 
+/// The basic comb method is described in GECC 3.44 as an example. We use a
+/// modified version that provides resistance to SPAs by avoiding zero
+/// digits in the representation as in:
+/// 
+/// HEDABOU, Mustapha, PINEL, Pierre, et B'EN'ETEAU, Lucien. A comb method to
+/// render ECC resistant against Side Channel Attacks. IACR Cryptology
+/// ePrint Archive, 2004, vol. 2004, p. 342.
+/// <http://eprint.iacr.org/2004/342.pdf>
 
 use rand::OsRng;
 
@@ -27,61 +24,57 @@ use utils::encoding::{ EndianOrdering, biguint_to_bitvec };
 
 /*---- CONSTANTS ----*/
 
-// ceil( n / w )
+/// ceil( n / w )
 const COMB_MAX_D: usize = 257;
 
-// 1 << (WINDOW_SIZE - 1)
+/// 1 << (WINDOW_SIZE - 1)
 const MAX_PRECOMPUTED_POINTS: usize = 33;
 
-/**
- * Maximum "window" size used for point multiplication.
- * Default: 6.
- * Minimum value: 2. Maximum value: 7.
- *
- * Result is an array of at most ( 1 << ( ECP_WINDOW_SIZE - 1 ) )
- * points used for point multiplication. This value is directly tied to EC
- * peak memory usage, so decreasing it by one should roughly cut memory usage
- * by two (if large curves are in use).
- *
- * Reduction in size may reduce speed, but larger curves are impacted first.
- * Sample performances (in ECDHE handshakes/s, with FIXED_POINT_OPT = 1):
- *      w-size:     6       5       4       3       2
- *      521       145     141     135     120      97
- *      384       214     209     198     177     146
- *      256       320     320     303     262     226
- *      224       475     475     453     398     342
- *      192       640     640     633     587     476
- */
 
-const ECP_WINDOW_SIZE: usize = 6; // Max window size used
+/// Maximum "window" size used for point multiplication.
+/// Default: 6.
+/// Minimum value: 2. Maximum value: 7.
+///
+/// Result is an array of at most ( 1 << ( ECP_WINDOW_SIZE - 1 ) )
+/// points used for point multiplication. This value is directly tied to EC
+/// peak memory usage, so decreasing it by one should roughly cut memory usage
+/// by two (if large curves are in use).
+///
+/// Reduction in size may reduce speed, but larger curves are impacted first.
+/// Sample performances (in ECDHE handshakes/s, with FIXED_POINT_OPT = 1):
+///      w-size:     6       5       4       3       2
+///      521       145     141     135     120      97
+///      384       214     209     198     177     146
+///      256       320     320     303     262     226
+///      224       475     475     453     398     342
+///      192       640     640     633     587     476
+const ECP_WINDOW_SIZE: usize = 6;
 
-/**
- * Trade memory for speed on fixed-point multiplication.
- *
- * This speeds up repeated multiplication of the generator (that is, the
- * multiplication in ECDSA signatures, and half of the multiplications in
- * ECDSA verification and ECDHE) by a factor roughly 3 to 4.
- *
- * The cost is increasing EC peak memory usage by a factor roughly 2.
- *
- * Change this value to false to reduce peak memory usage.
- */
 
+/// Trade memory for speed on fixed-point multiplication.
+///
+/// This speeds up repeated multiplication of the generator (that is, the
+/// multiplication in ECDSA signatures, and half of the multiplications in
+/// ECDSA verification and ECDHE) by a factor roughly 3 to 4.
+///
+/// The cost is increasing EC peak memory usage by a factor roughly 2.
+///
+/// Change this value to false to reduce peak memory usage.
 const FIXED_POINT_OPT: bool = true;
 
 
 /*---- FUNCTIONS ----*/
 
-/**
- * Basic fixed comb method
- * 
- * `d` - Fixed D size
- * `w` - Comb size, i.e. number of teeth of the comb, and must be between
- *       2 and 7 (in practice, between 2 and MBEDTLS_ECP_WINDOW_SIZE)
- * `m` - Expected to be odd and such that bitlength(m) <= w * d
- *       (the result will be incorrect if these assumptions are not satisfied)
- */
 
+/// Basic fixed comb method
+/// 
+/// ### Arguments
+/// 
+/// * `d` - Fixed D size
+/// * `w` - Comb size, i.e. number of teeth of the comb, and must be between
+///         2 and 7 (in practice, between 2 and MBEDTLS_ECP_WINDOW_SIZE)
+/// * `m` - Expected to be odd and such that bitlength(m) <= w/// d
+///         (the result will be incorrect if these assumptions are not satisfied)
 fn fixed_method(d: &usize, w: &usize, m: &BigUint) -> Vec<u8> {
     let mut x = vec![0; d + 1];
     let m_vec = biguint_to_bitvec(&m, EndianOrdering::Little);
@@ -115,16 +108,15 @@ fn fixed_method(d: &usize, w: &usize, m: &BigUint) -> Vec<u8> {
 }
 
 
-/**
- * Multiplication (R = m * P) using the comb method,
- * for curves in short Weierstrass form. R is returned
- *
- * `group` - Curve group to operate from
- * `m` - M value
- * `P` - P point
- * `rng` - Random number generator
- */
-
+/// Multiplication (R = m * P) using the comb method,
+/// for curves in short Weierstrass form. R is returned
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `m` - M value
+/// * `P` - P point
+/// * `rng` - Random number generator
 pub fn multiply(group: &mut ECPGroup, m: &BigUint, P: &ECPPoint, mut rng: &mut OsRng) -> ECPPoint {
 
     let mut p_equals_g = if P.x == group.g.x && P.y == group.g.y {
@@ -177,21 +169,17 @@ pub fn multiply(group: &mut ECPGroup, m: &BigUint, P: &ECPPoint, mut rng: &mut O
     jacobian_coords::normalize_point(group, &R)
 }   
 
-
-/**
- * Core multiplication algorithm for the (modified) comb method.
- * This part is actually common with the basic comb method (GECC 3.44)
- *
- * Cost: d A + d D + 1 R
- * 
- * `group` - Curve group to operate from
- * `T` - pre-computed points
- * `pre_len` - Length for point selection
- * `k` - Boolean selector over iterations
- * `d` - Iteration counter
- * `rng` - Random number generator
- */
-
+/// Core multiplication algorithm for the (modified) comb method.
+/// This part is actually common with the basic comb method (GECC 3.44)
+///
+/// Cost: d A + d D + 1 R
+/// 
+/// `group` - Curve group to operate from
+/// `T` - pre-computed points
+/// `pre_len` - Length for point selection
+/// `k` - Boolean selector over iterations
+/// `d` - Iteration counter
+/// `rng` - Random number generator
 pub fn core_multiplication(
     group: &ECPGroup, 
     P: &ECPPoint,
@@ -217,16 +205,14 @@ pub fn core_multiplication(
     R
 }
 
-
-/**
- * Minimize the number of multiplications in R = m * P, that is minimize
- * 10 * d * w + 18 * 2^(w-1) + 11 * d + 7 * w, with d = ceil( nbits / w )
- * (see costs of the various parts, with 1S = 1M)
- * 
- * `nbits` - Bit size needed for calculation
- * `p_equals_g` - Whether the P and G points in original multiplication are equal
- */
-
+/// Minimize the number of multiplications in R = m * P, that is minimize
+/// 10 * d * w + 18 * 2^(w-1) + 11 * d + 7 * w, with d = ceil( nbits / w )
+/// (see costs of the various parts, with 1S = 1M)
+/// 
+/// ### Arguments
+/// 
+/// `nbits` - Bit size needed for calculation
+/// `p_equals_g` - Whether the P and G points in original multiplication are equal
 fn get_window_size(nbits: &usize, p_equals_g: bool) -> usize {
     let mut w = if nbits >= &384 {
         5 } else {
@@ -254,18 +240,14 @@ fn get_window_size(nbits: &usize, p_equals_g: bool) -> usize {
     w
 }
 
-
-/**
- * Precompute points for the comb method
- *
- * If i = i_{w-1} ... i_1 is the binary representation of i, then
- * T[i] = i_{w-1} 2^{(w-1)d} P + ... + i_1 2^d P + P
- *
- * T must be able to hold 2^{w - 1} elements
- *
- * Cost: d(w-1) D + (2^{w-1} - 1) A + 1 N(w-1) + 1 N(2^{w-1} - 1)
- */
-
+/// Precompute points for the comb method
+///
+/// If i = i_{w-1} ... i_1 is the binary representation of i, then
+/// T[i] = i_{w-1} 2^{(w-1)d} P + ... + i_1 2^d P + P
+///
+/// T must be able to hold 2^{w - 1} elements
+///
+/// Cost: d(w-1) D + (2^{w-1} - 1) A + 1 N(w-1) + 1 N(2^{w-1} - 1)
 fn precompute(group: &ECPGroup, P: &ECPPoint, w: &usize, d: &usize) -> Vec<ECPPoint> {
     let mut T = vec![ECPPoint::new( &BigInt::zero(), Some(BigInt::zero()) ); MAX_PRECOMPUTED_POINTS + 1];
     let mut i = 1;
@@ -316,15 +298,13 @@ fn precompute(group: &ECPGroup, P: &ECPPoint, w: &usize, d: &usize) -> Vec<ECPPo
     T
 }
 
-
-/**
- * Select precomputed point: R = sign(i) * T[ abs(i) / 2 ]. R is returned
- * 
- * `group` - Curve group to operate from
- * `T` - Vector precomputed points
- * `i` - "i" value in calculation
- */
-
+/// Select precomputed point: R = sign(i) * T[ abs(i) / 2 ]. R is returned
+/// 
+/// ### Arguments
+/// 
+/// `group` - Curve group to operate from
+/// `T` - Vector precomputed points
+/// `i` - "i" value in calculation
 fn select(group: &ECPGroup, T: &Vec<ECPPoint>, i: usize) -> ECPPoint {
     let mut R = ECPPoint::new( &BigInt::zero(), Some(BigInt::zero()) );
 

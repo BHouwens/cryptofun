@@ -1,8 +1,8 @@
 use rand::OsRng;
-use utils::primes;
 use num_bigint::BigUint;
-use std::ops::{ Rem, Shr };
+use crate::utils::primes;
 use num_bigint::ToBigUint;
+use std::ops::{ Rem, Shr };
 use num_traits::{ One, Zero };
 
 pub struct DiffieHellman {

@@ -9,43 +9,42 @@ use utils::encoding::{ EndianOrdering, biguint_to_bitvec, bitvec_to_biguint };
 use utils::ecc_curves::{ ECPPoint, ECPGroup, ECPSupportedCurves, ECPCurveShape };
 
 
-/*--- Structs ---*/
+/*---- STRUCTS ----*/
 
-/**
- * All values in the ECPKeypair are public because the 
- * assumption is that ECC is not used in isolation, but 
- * rather used as a mathematical base for other crypto 
- * processes.
- */
-
+/// A simple ECC key pair
+/// 
+/// All values in the ECPKeypair are public because the 
+/// assumption is that ECC is not used in isolation, but 
+/// rather used as a mathematical base for other crypto 
+/// processes.
 #[derive(Clone)]
 pub struct ECPKeypair {
-    pub group: ECPGroup, // elliptic curve and base point
-    pub d: BigUint, // private value
-    pub q: ECPPoint // public value
+    pub group: ECPGroup,    // elliptic curve and base point
+    pub d: BigUint,         // private value
+    pub q: ECPPoint         // public value
 }
 
 
-/*--- Constants ---*/
+/*---- CONSTANTS ----*/
 
-const MAX_BIT_SIZE: usize = 521; // Max bit size of groups
+/// Max bit size of groups
+const MAX_BIT_SIZE: usize = 521;
 const MAX_BYTE_SIZE: usize = ( ( 521 + 7 ) / 8 );
 const MAX_POINT_LEN: usize = ( 2 * 521 + 1 );
 
 
-/*--- Implementation ---*/
+/*---- IMPLEMENTATIONS ----*/
 
 impl ECPKeypair {
 
-    /**
-     * Elliptic curve cryptosystem. This is a Rust translation of 
-     * the TLS ECC source code, written in C, and serves as the mathematical
-     * base for all ECC related cryptographic code. Original source code 
-     * found here: https://github.com/ARMmbed/mbedtls/blob/master/library/ecp.c
-     * 
-     * `curve` - Curve group to use
-     */
-
+    /// Elliptic curve cryptosystem. This is a Rust translation of 
+    /// the TLS ECC source code, written in C, and serves as the mathematical
+    /// base for all ECC related cryptographic code. Original source code 
+    /// found here: https://github.com/ARMmbed/mbedtls/blob/master/library/ecp.c
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `curve` - Curve group to use
     pub fn new(curve: ECPSupportedCurves) -> Self {
         ECPKeypair {
             group: ECPGroup::new(curve),
@@ -54,16 +53,14 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Set up new ECP keypair values. This is a separate method 
-     * from "new" because internal method referencing is not technically 
-     * possible in constructors. As such, it should chained with the "new" 
-     * command in practical use (see tests below for an example).
-     * 
-     * `rng` - Random number generator
-     */
-
+    /// Set up new ECP keypair values. This is a separate method 
+    /// from "new" because internal method referencing is not technically 
+    /// possible in constructors. As such, it should chained with the "new" 
+    /// command in practical use (see tests below for an example).
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `rng` - Random number generator
     pub fn setup(mut self, mut rng: &mut OsRng) -> ECPKeypair {
         self.d = self.get_valid_private_value();
         self.q = self.multiply(&mut rng);
@@ -74,14 +71,12 @@ impl ECPKeypair {
         self
     }
 
-
-    /**
-     * Multiplication R = m * P. In this case "P" is the generator
-     * point of the group and "m" is the private "d" value
-     * 
-     * `rng` - Random number generator
-     */
-
+    /// Multiplication R = m * P. In this case "P" is the generator
+    /// point of the group and "m" is the private "d" value
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `rng` - Random number generator
     pub fn multiply(&mut self, rng: &mut OsRng) -> ECPPoint {
         let curve_shape = self.group.get_curve_shape();
         let p_point = self.group.g.clone();
@@ -92,14 +87,12 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Multiplies supplied point with supplied scalar
-     * 
-     * `p` - Point to multiply
-     * `m` - Scalar to multiply with
-     */
-
+    /// Multiplies supplied point with supplied scalar
+    /// 
+    /// ### Arguments
+    ///  
+    /// * `p` - Point to multiply
+    /// * `m` - Scalar to multiply with
     pub fn multiply_point(&mut self, p: &ECPPoint, m: &BigUint) -> ECPPoint {
         let curve_shape = self.group.get_curve_shape();
         let mut rng = OsRng::new().unwrap();
@@ -110,14 +103,12 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Adds two points
-     * 
-     * `p` - First point
-     * `r` - Second point
-     */
-
+    /// Adds two points
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `p` - First point
+    /// * `r` - Second point
     pub fn add_points(&mut self, p: &ECPPoint, r: &ECPPoint) -> ECPPoint {
         let curve_shape = self.group.get_curve_shape();
         let gx = self.group.clone().g.x;
@@ -129,13 +120,11 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Checks both public and private keys provided
-     * 
-     * `public` - Public point to check
-     */
-
+    /// Checks both public and private keys provided
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `public` - Public point to check
     fn check_public_private_keys(&self, point: &ECPPoint) -> () {
         let private_key_check = self.check_private_key();
         let public_key_check = self.check_public_key(point);
@@ -149,11 +138,7 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Check that the D value is valid as a private key
-     */
-
+    /// Check that the D value is valid as a private key
     fn check_private_key(&self) -> (bool, &'static str) {
         let curve_shape = self.group.get_curve_shape();
 
@@ -181,13 +166,11 @@ impl ECPKeypair {
         (true, "")
     }
 
-
-    /**
-     * Check that a point is a valid public key
-     * 
-     * `point` - Point to check
-     */
-
+    /// Check that a point is a valid public key
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `point` - Point to check
     pub fn check_public_key(&self, point: &ECPPoint) -> (bool, &'static str) {
         // Must use affine coordinates
         if point.z != BigInt::one() {
@@ -209,12 +192,8 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Generates a valid private value for use
-     * in an ECC keypair
-     */
-
+    /// Generates a valid private value for use
+    /// in an ECC keypair
     pub fn get_valid_private_value(&self) -> BigUint {
         let mut rng = OsRng::new().unwrap();
         let n_size = (self.group.nbits + &7) / 8;
@@ -280,14 +259,10 @@ impl ECPKeypair {
         }
     }
 
-
-    /**
-     * Check that an affine point is valid as a public key,
-     * Short weierstrass curves (SEC1 3.2.3.1)
-     * 
-     * `point` - Point to check
-     */
-
+    /// Check that an affine point is valid as a public key,
+    /// Short weierstrass curves (SEC1 3.2.3.1)
+    /// 
+    /// * `point` - Point to check
     fn check_weierstrass_public_key(&self, point: &ECPPoint) -> (bool, &'static str) {
         if point.x.clone() < BigInt::zero()             || 
            point.y.clone().unwrap() < BigInt::zero()    ||
