@@ -6,14 +6,11 @@ use crypto::aead::{ AeadEncryptor, AeadDecryptor };
 use crypto::symmetriccipher::{ Encryptor, Decryptor };
 use crypto::buffer::{ RefWriteBuffer, RefReadBuffer, WriteBuffer, ReadBuffer, BufferResult };
 
-/**
- * AAD is an identifier value and is used in GCM mode only, thus
- * necessitating an Option type.
- * 
- * The "history_bytes" value is used to keep track of the number 
- * of bytes that have been encrypted with the current key. 
- */
-
+/// AAD is an identifier value and is used in GCM mode only, thus
+/// necessitating an Option type.
+/// 
+/// The "history_bytes" value is used to keep track of the number 
+/// of bytes that have been encrypted with the current key. 
 pub struct AES {
     mode: AESMode,
     pub key: Vec<u8>,
@@ -32,18 +29,17 @@ pub enum AESMode {
 
 impl AES {
 
-    /**
-     * AES symmetric block cipher. This implementation is a module
-     * wrapper over the AES cipher provided in the rust-crypto crate 
-     * found here: https://github.com/DaGenix/rust-crypto. 
-     * 
-     * TODO: Inspect the TLS AES source code and see whether it improves
-     * 
-     * `key_size` - Cipher key size
-     * `mode` - AES block mode, either Counter or GCM
-     * `gcm_aad` - AAD for GCM mode. None for Counter
-     */
-
+    /// AES symmetric block cipher. This implementation is a module
+    /// wrapper over the AES cipher provided in the rust-crypto crate 
+    /// found here: https://github.com/DaGenix/rust-crypto. 
+    /// 
+    /// TODO: Inspect the TLS AES source code and see whether it improves
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `key_size` - Cipher key size
+    /// * `mode` - AES block mode, either Counter or GCM
+    /// * `gcm_aad` - AAD for GCM mode. None for Counter
     pub fn new(key_size: aes::KeySize, mode: AESMode, gcm_aad: Option<Vec<u8>>) -> Self {
         let mut rng = OsRng::new().unwrap();
         let mut key = primes::generate_random_biguint(&mut rng, &256).to_bytes_le();
@@ -58,14 +54,12 @@ impl AES {
             initialization_vector: iv
         }
     }
-    
 
-    /**
-     * Encrypts a block of data provided and returns the ciphertext
-     * 
-     * `data` - Data to encrypt
-     */
-
+    /// Encrypts a block of data provided and returns the ciphertext
+    /// 
+    /// ### Arguments
+    ///  
+    /// * `data` - Data to encrypt
     pub fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, symmetriccipher::SymmetricCipherError> {
         match self.mode {
             AESMode::GCM => {
@@ -104,13 +98,11 @@ impl AES {
         }
     }
 
-
-    /**
-     * Decrypts a block of data and returns the plain text
-     * 
-     * `ciphertext` - Ciphertext to decrypt
-     */
-
+    /// Decrypts a block of data and returns the plain text
+    /// 
+    /// ### Arguments
+    ///  
+    /// * `ciphertext` - Ciphertext to decrypt
     pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, symmetriccipher::SymmetricCipherError> {
         match self.mode {
             AESMode::GCM => {
@@ -147,16 +139,14 @@ impl AES {
         }
     }
 
-
-    /**
-     * Fills a vector with zeros based on the provided length.
-     * The reason for this is that slices in Rust require a constant
-     * value length, which is not guaranteed because of the variable 
-     * nature of input data
-     * 
-     * `length` - Length to fill up to
-     */
-
+    /// Fills a vector with zeros based on the provided length.
+    /// The reason for this is that slices in Rust require a constant
+    /// value length, which is not guaranteed because of the variable 
+    /// nature of input data
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `length` - Length to fill up to
     fn fill_vec_to_length(&self, length: usize) -> Vec<u8> {
         let mut output = Vec::with_capacity(length);
 

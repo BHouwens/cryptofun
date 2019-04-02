@@ -8,22 +8,21 @@ use utils::ecc_curves::{ ECPGroup, ECPPoint, ECPSupportedCurves, ECPCurveShape }
 
 pub struct ECDH {
     pub group: ECPGroup,
-    pub q: ECPPoint, // our public value (public key) 
-    pub z: BigInt, // shared secret
-    pub peer_q: Option<ECPPoint>, // peer's public value (public key)
-    keypair: ECPKeypair // Generated keypair, for reference (private value stored here)
+    pub q: ECPPoint,                // our public value (public key) 
+    pub z: BigInt,                  // shared secret
+    pub peer_q: Option<ECPPoint>,   // peer's public value (public key)
+    keypair: ECPKeypair             // Generated keypair, for reference (private value stored here)
 }
 
 impl ECDH {
 
-    /**
-     * Elliptic curve Diffie-Hellman. This is a Rust implementation of 
-     * the TLS ECDH source code, written in C, found here:
-     * https://github.com/ARMmbed/mbedtls/blob/master/library/ecdh.c
-     * 
-     * `curve` - Curve group to use
-     */
-
+    /// Elliptic curve Diffie-Hellman. This is a Rust implementation of 
+    /// the TLS ECDH source code, written in C, found here:
+    /// https://github.com/ARMmbed/mbedtls/blob/master/library/ecdh.c
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `curve` - Curve group to use
     pub fn new(curve: ECPSupportedCurves) -> Self {
         let zero = BigInt::zero();
         let mut rng = OsRng::new().unwrap();
@@ -38,13 +37,11 @@ impl ECDH {
         }
     }
 
-
-    /**
-     * Derive and export the shared secret
-     * 
-     * `rng` - Random number generator
-     */
-    
+    /// Derive and export the shared secret
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `rng` - Random number generator
     pub fn generate_shared_key(&mut self, mut rng: &mut OsRng) -> BigInt {
         // Check peer Q point first
         self.check_peer_q();
@@ -64,11 +61,7 @@ impl ECDH {
         P.x
     }
 
-
-    /**
-     * Checks that a peer's Q point is available and valid
-     */
-
+    /// Checks that a peer's Q point is available and valid
     fn check_peer_q(&self) -> () {
         if self.peer_q.is_none() {
             panic!("No peer point available to generate shared secret for");

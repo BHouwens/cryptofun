@@ -3,6 +3,7 @@ use sha3;
 use blake2;
 use tiny_keccak::Keccak;
 
+/// Enum for allows hash algorithms
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum HashAlgorithm {
@@ -14,14 +15,12 @@ pub enum HashAlgorithm {
     Keccak512
 }
 
-
-/** 
- * Hash a completely available message
- *
- * `message` - Message to sign
- * `protocol` - Hash protocol to use
- */
-
+/// Hash a completely available message
+/// 
+/// ### Arguments
+/// 
+/// * `message` - Message to sign
+/// * `protocol` - Hash protocol to use
 pub fn hash_message(message: &[u8], protocol: HashAlgorithm) -> Vec<u8> {
     let result = match protocol {
         HashAlgorithm::Blake2b => blake2::Blake2b::digest(message).to_vec(),

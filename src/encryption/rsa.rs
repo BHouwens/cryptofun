@@ -39,16 +39,15 @@ const RSA_CHUNK: usize = 30;
 
 impl RSA {
 
-    /**
-     * RSA public key cryptosystem. This implementation is a Rust translation
-     * of the TLS RSA library written in C, found here: https://tls.mbed.org/rsa-source-code.
-     * Padding is restricted to PKCS#1 v2.1, as v1.5 support has been dropped by TLS and is
-     * widely considered insecure
-     *
-     * `hash_algorithm` - Hashing algorithm for padding
-     * `use_crt` - Whether or not to use the Chinese Remainder Theorem
-     */
-
+    /// RSA public key cryptosystem. This implementation is a Rust translation
+    /// of the TLS RSA library written in C, found here: https://tls.mbed.org/rsa-source-code.
+    /// Padding is restricted to PKCS#1 v2.1, as v1.5 support has been dropped by TLS and is
+    /// widely considered insecure
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `hash_algorithm` - Hashing algorithm for padding
+    /// * `use_crt` - Whether or not to use the Chinese Remainder Theorem
     pub fn new(hash_algorithm: HashAlgorithm, use_crt: bool) -> Self {
         RSA {
             n: BigUint::zero(),
@@ -67,19 +66,17 @@ impl RSA {
         }
     }
 
-
-    /**
-     * Encrypts the input data using RSA. The input must be as large as the size
-     * of "self.size_n" (eg. 128 bytes if RSA-1024 is used), and as such the input
-     * is encrypted in chunks before returning
-     *
-     * TODO: Handle input padding
-     *
-     * `data` - Data to encrypt
-     * `mode` - Either Private or Public
-     * `generator` - Random number generator
-     */
-
+    /// Encrypts the input data using RSA. The input must be as large as the size
+    /// of "self.size_n" (eg. 128 bytes if RSA-1024 is used), and as such the input
+    /// is encrypted in chunks before returning
+    ///
+    /// TODO: Handle input padding
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `data` - Data to encrypt
+    /// * `mode` - Either Private or Public
+    /// * `generator` - Random number generator
     pub fn encrypt(&mut self, data: &Vec<u8>, mode: AsymmetricKeyMode, mut generator: &mut OsRng) -> Vec<u8> {
         let mut encrypted = Vec::new();
 
@@ -111,19 +108,17 @@ impl RSA {
         encrypted
     }
 
-
-    /**
-     * Decrypts the input data using RSA. The Chunk struct is inconsistent
-     * in its slicing, and thus a custom chunking function is used to split
-     * the ciphertext
-     *
-     * TODO: Handle padding
-     *
-     * `ciphertext` - Ciphertext to decrypt
-     * `mode` - Either Private or Public
-     * `generator` - Random number generator
-     */
-
+    /// Decrypts the input data using RSA. The Chunk struct is inconsistent
+    /// in its slicing, and thus a custom chunking function is used to split
+    /// the ciphertext
+    ///
+    /// TODO: Handle padding
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `ciphertext` - Ciphertext to decrypt
+    /// * `mode` - Either Private or Public
+    /// * `generator` - Random number generator
     pub fn decrypt(&mut self, ciphertext: &Vec<u8>, mode: AsymmetricKeyMode, mut generator: &mut OsRng) -> Vec<u8> {
         let mut iter_counter = 0;
         let mut decrypted = Vec::new();
@@ -162,14 +157,12 @@ impl RSA {
         decrypted
     }
 
-
-    /**
-     * Generates an RSA keypair.
-     *
-     * `bitlength` - Bit length public key size
-     * `exponent` - Public exponent (eg. 65537)
-     */
-
+    /// Generates an RSA keypair.
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `bitlength` - Bit length public key size
+    /// * `exponent` - Public exponent (eg. 65537)
     pub fn generate_keypair(mut self, bitlength: usize, exponent: &BigUint) -> RSA {
         self.check_input_params(&bitlength, &exponent);
 
@@ -190,15 +183,13 @@ impl RSA {
         self
     }
 
-
-    /**
-     * Generates an RSA keypair from peer
-     * 
-     * `bitlength` - Bit length public key size
-     * `exponent` - Public exponent
-     * `modulus` - Public modulus
-     */
-
+    /// Generates an RSA keypair from peer
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `bitlength` - Bit length public key size
+    /// * `exponent` - Public exponent
+    /// * `modulus` - Public modulus
     pub fn generate_keypair_from_peer(
         mut self, 
         bitlength: usize, 
@@ -218,25 +209,19 @@ impl RSA {
         self
     }
 
-
-    /**
-     * Exports public exponent and modulus
-     */
-
+    /// Exports public exponent and modulus
     pub fn export_public_values(&self) -> (BigUint, BigUint) {
         (self.n.clone(), self.e.clone())
     }
 
-
-    /**
-     * Generate or update blinding values, see section 10 of:
-     * KOCHER, Paul C. Timing attacks on implementations of Diffie-Hellman, RSA,
-     * DSS, and other systems. In: Advances in Cryptology-CRYPTO'96. Springer
-     * Berlin Heidelberg, 1996. p. 104-113.
-     *
-     * `generator` - Random number generator
-     */
-
+    /// Generate or update blinding values, see section 10 of:
+    /// KOCHER, Paul C. Timing attacks on implementations of Diffie-Hellman, RSA,
+    /// DSS, and other systems. In: Advances in Cryptology-CRYPTO'96. Springer
+    /// Berlin Heidelberg, 1996. p. 104-113.
+    /// 
+    /// ### Arguments
+    ///
+    /// * `generator` - Random number generator
     fn prepare_blinding(&mut self, generator: &mut OsRng) -> () {
         let mut count = 0;
 
@@ -263,17 +248,15 @@ impl RSA {
         }
     }
 
-
-    /**
-     * Perform a private key operation. Since the Chinese Remainder Theorem
-     * will be used for more efficient computation, values DP and DQ serve as the base
-     * for "m = c ^ d % n". More info on CRT for RSA can be found at:
-     * https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Using_the_Chinese_remainder_algorithm
-     *
-     * `input` - Input data to operate on
-     * `generator` - Random number generator
-     */
-
+    /// Perform a private key operation. Since the Chinese Remainder Theorem
+    /// will be used for more efficient computation, values DP and DQ serve as the base
+    /// for "m = c ^ d % n". More info on CRT for RSA can be found at:
+    /// https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Using_the_Chinese_remainder_algorithm
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `input` - Input data to operate on
+    /// * `generator` - Random number generator
     fn use_private_key(&mut self, input: &BigUint, mut generator: &mut OsRng) -> BigUint {
         // Input Blinding
         self.prepare_blinding(&mut generator);
@@ -324,22 +307,16 @@ impl RSA {
         t
     }
 
-
-    /**
-     * Perform a public key operation
-     *
-     * `input` - Input value to operate on
-     */
-
+    /// Perform a public key operation
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `input` - Input value to operate on
     fn use_public_key(&self, input: &BigUint) -> BigUint {
         input.modpow(&self.e, &self.n)
     }
 
-
-    /**
-     * Checks pub/priv keypair for validity
-     */
-
+    /// Checks pub/priv keypair for validity
     pub fn check_keypair(&self) -> () {
         let public_check = self.check_public_key();
         let private_check = self.check_private_key();
@@ -353,11 +330,7 @@ impl RSA {
         }
     }
 
-
-    /**
-     * Checks that public key is valid
-     */
-
+    /// Checks that public key is valid
     fn check_public_key(&self) -> (bool, &'static str) {
         if self.n < BigUint::from_u64(128).unwrap() {
             return (false, "The 'n' value of RSA keypair is too small");
@@ -370,11 +343,7 @@ impl RSA {
         (true, "")
     }
 
-
-    /**
-     * Checks that private key is valid
-     */
-
+    /// Checks that private key is valid
     fn check_private_key(&self) -> (bool, &'static str) {
         let pq = &self.p * &self.q;
         let p1 = &self.p - &BigUint::one();
@@ -392,14 +361,12 @@ impl RSA {
         (true, "")
     }
 
-
-    /**
-     * Ensures input parameters are valid for operation
-     *
-     * `bitlength` - Bit length of primes
-     * `exponent` - Exponent for calculation
-     */
-
+    /// Ensures input parameters are valid for operation
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `bitlength` - Bit length of primes
+    /// * `exponent` - Exponent for calculation
     fn check_input_params(&self, bitlength: &usize, exponent: &BigUint) -> () {
         if bitlength < &128 {
             panic!("Bit length provided for RSA is either too small or not even");
@@ -410,15 +377,13 @@ impl RSA {
         }
     }
 
-
-    /**
-     * Generates "p", "q" and totient values that fulfill Euler's totient function,
-     * where GCD( e, (p-1) * (q-1) ) == 1 and q < p.
-     *
-     * `bitlength` - Bit length of primes
-     * `exponent` - Exponent for calculation
-     */
-
+    /// Generates "p", "q" and totient values that fulfill Euler's totient function,
+    /// where GCD( e, (p-1) * (q-1) ) == 1 and q < p.
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `bitlength` - Bit length of primes
+    /// * `exponent` - Exponent for calculation
     fn get_totient_values(&mut self, bitlength: &usize, exponent: BigUint) -> (BigUint, BigUint, BigUint) {
         let mut co_primality = BigUint::zero();
         let mut p = BigUint::zero();
