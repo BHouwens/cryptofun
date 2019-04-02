@@ -262,6 +262,8 @@ impl ECPKeypair {
     /// Check that an affine point is valid as a public key,
     /// Short weierstrass curves (SEC1 3.2.3.1)
     /// 
+    /// ### Arguments
+    /// 
     /// * `point` - Point to check
     fn check_weierstrass_public_key(&self, point: &ECPPoint) -> (bool, &'static str) {
         if point.x.clone() < BigInt::zero()             || 

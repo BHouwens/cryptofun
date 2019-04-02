@@ -11,12 +11,11 @@ const LARGE_THRESHOLD: usize = 25;
 /*-------- PUBLIC FUNCTIONS --------*/
 
 
-/**
- * Generates a prime number
- *
- * `bitlength` - The bit length of the number
- */
-
+/// Generates a prime number
+/// 
+/// ### Arguments
+/// 
+/// * `bitlength` - The bit length of the number
 pub fn generate(bitlength: &usize) -> BigUint {
     let mut generator = match OsRng::new() {
         Ok(g) => g,
@@ -33,13 +32,11 @@ pub fn generate(bitlength: &usize) -> BigUint {
     }
 }
 
-
-/**
- * Generates a prime number that is safe for discrete log crypto
- *
- * `bitlength` - Bit length of prime number
- */
-
+/// Generates a prime number that is safe for discrete log crypto
+/// 
+/// ### Arguments
+/// 
+/// * `bitlength` - Bit length of prime number
 pub fn generate_discrete_log_prime(bitlength: &usize) -> BigUint {
     loop {
         let candidate = generate(bitlength);
@@ -50,14 +47,12 @@ pub fn generate_discrete_log_prime(bitlength: &usize) -> BigUint {
     }
 }
 
-
-/** 
- * Checks for prime number safety by ensuring that 
- * "q" in "p = 2q + 1" is a Sophie Germain prime
- *
- * `candidate` - Candidate prime, the "p" in above equation
- */
-
+/// Checks for prime number safety by ensuring that 
+/// "q" in "p = 2q + 1" is a Sophie Germain prime
+/// 
+/// ### Arguments
+/// 
+/// * `candidate` - Candidate prime, the "p" in above equation
 fn is_discrete_log_safe(candidate: &BigUint) -> bool {
     let two = BigUint::one() + BigUint::one();
     let q = candidate.shr(1) - BigUint::one();
@@ -69,14 +64,12 @@ fn is_discrete_log_safe(candidate: &BigUint) -> bool {
     false
 }
 
-
-/** 
- * Gets the modular inverse for provided parameters using Extended Euclidean
- *
- * `a` - Value to apply EE to
- * `modulus` - Modulus for calculation
- */
-
+/// Gets the modular inverse for provided parameters using Extended Euclidean
+/// 
+/// ### Arguments
+/// 
+/// * `a` - Value to apply EE to
+/// * `modulus` - Modulus for calculation
 pub fn modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
     let int_a = a.to_bigint().unwrap();
     let int_modulus = modulus.to_bigint().unwrap();
@@ -97,15 +90,14 @@ pub fn modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
 }
 
 
-/**
- * Gets the modular inverse for provided parameters using Extended Euclidean,
- * with a signed integer parameter expectation. Useful for Jacobian coordinate 
- * normalization
- * 
- * `a` - Value to apply EE to
- * `modulus` - Modulus for calculation
- */
-
+/// Gets the modular inverse for provided parameters using Extended Euclidean,
+/// with a signed integer parameter expectation. Useful for Jacobian coordinate 
+/// normalization
+/// 
+/// ### Arguments
+/// 
+/// * `a` - Value to apply EE to
+/// * `modulus` - Modulus for calculation
 pub fn modular_inverse_int(a: &BigInt, modulus: &BigInt) -> BigInt {
     let mut mn = (modulus.clone(), a.clone());
     let mut xy = (BigInt::zero(), BigInt::one());
@@ -122,14 +114,13 @@ pub fn modular_inverse_int(a: &BigInt, modulus: &BigInt) -> BigInt {
     xy.0
 }
 
-
-/** 
- * Generates an optimised large number for primality testing
- *
- * `generator` - Random number generator
- * `bitlength` - Bit length for number
- */
-
+ 
+/// Generates an optimised large number for primality testing
+/// 
+/// ### Arguments
+/// 
+/// * `generator` - Random number generator
+/// * `bitlength` - Bit length for number
 pub fn generate_random_biguint(generator: &mut OsRng, bitlength: &usize) -> BigUint {
     let candidate:BigUint = generator.gen_biguint(bitlength - 1);
     let shifted_candidate = candidate.shl(1);
@@ -142,12 +133,11 @@ pub fn generate_random_biguint(generator: &mut OsRng, bitlength: &usize) -> BigU
 /*-------- PRIVATE FUNCTIONS --------*/
 
 
-/**
- * Full, efficient check whether large candidate is prime
- *
- * `candidate` - Candidate to check
- */
-
+/// Full, efficient check whether large candidate is prime
+/// 
+/// ### Arguments
+/// 
+/// * `candidate` - Candidate to check
 fn is_large_prime(candidate: &BigUint) -> bool {
     if !fermat_little(candidate) {
         return false;
@@ -159,14 +149,12 @@ fn is_large_prime(candidate: &BigUint) -> bool {
 
     true
 }
-
-
-/** 
- * Full check whether small candidate is prime
- *
- * `candidate` - Candidate to check
- */
-
+ 
+/// Full check whether small candidate is prime
+/// 
+/// ### Arguments
+/// 
+/// * `candidate` - Candidate to check
 fn is_small_prime(candidate: &BigUint) -> bool {
     let cast = candidate.clone().to_u64().unwrap();
 
@@ -188,15 +176,13 @@ fn is_small_prime(candidate: &BigUint) -> bool {
 
     true
 }
-
-
-/** 
- * Checks whether a candidate is definitely composite
- * based on Fermat's little theorem
- * 
- * `candidate` - Candidate to check
- */
-
+ 
+/// Checks whether a candidate is definitely composite
+/// based on Fermat's little theorem
+/// 
+/// ### Arguments
+/// 
+/// * `candidate` - Candidate to check
 fn fermat_little(candidate: &BigUint) -> bool {
     let mut generator = match OsRng::new() {
         Ok(g) => g,
@@ -209,15 +195,13 @@ fn fermat_little(candidate: &BigUint) -> bool {
     result == BigUint::one()
 }
 
-
-/**
- * Checks whether candidate is prime via Miller-Rabin test.
- * 3 iterations is considered secure at an error probability of 2^80
- *
- * `candidate` - Candidate to check
- * `iterations` - Number of iterations to perform
- */
-
+/// Checks whether candidate is prime via Miller-Rabin test.
+/// 3 iterations is considered secure at an error probability of 2^80
+/// 
+/// ### Arguments
+/// 
+/// * `candidate` - Candidate to check
+/// * `iterations` - Number of iterations to perform
 fn miller_rabin(candidate: &BigUint, iterations: usize) -> bool {
     let (s, d) = greatest_2_divisor(candidate);
     let one = BigUint::one();
@@ -251,13 +235,11 @@ fn miller_rabin(candidate: &BigUint, iterations: usize) -> bool {
     true
 }
 
-
-/**
- * Util function for Miller-Rabin test
- *
- * `num` - Number to use
- */
-
+/// Util function for Miller-Rabin test
+/// 
+/// ### Arguments
+/// 
+/// * `num` - Number to use
 fn greatest_2_divisor(num: &BigUint) -> (usize, BigUint) {
     let mut s = 0;
     let mut num = num - BigUint::one();

@@ -1,23 +1,21 @@
 use utils::encoding::{ int_to_binary, binary_to_int };
 
-/**
- * The Knuth-Yao sampling algorithm is an extremely useful scheme for 
- * fast and efficient discrete Gaussian sampling. It is primarily based 
- * on the random-bit model and, on average, uses a near optimal number of 
- * random bits.
- *
- * This is useful when implementing the sampler for LWE schemes. Lookup 
- * tables are used to accelerate the sampling algorithm in the most frequently 
- * used regions of the Gaussian distribution. This allows sampling at an
- * average of 28.5 cycles per sample.
- * 
- * This implementation is a pure Rust translation of the algorithm found within 
- * "Efficient Software Implementation of Ring-LWE Encryption", which can be found here: 
- * https://eprint.iacr.org/2014/725.pdf
- * 
- * as well as the accompanying code written in C, which can be found here: 
- * https://github.com/ruandc/Ring-LWE-Encryption
- */
+/// The Knuth-Yao sampling algorithm is an extremely useful scheme for 
+/// fast and efficient discrete Gaussian sampling. It is primarily based 
+/// on the random-bit model and, on average, uses a near optimal number of 
+/// random bits.
+///
+/// This is useful when implementing the sampler for LWE schemes. Lookup 
+/// tables are used to accelerate the sampling algorithm in the most frequently 
+/// used regions of the Gaussian distribution. This allows sampling at an
+/// average of 28.5 cycles per sample.
+/// 
+/// This implementation is a pure Rust translation of the algorithm found within 
+/// "Efficient Software Implementation of Ring-LWE Encryption", which can be found here: 
+/// https://eprint.iacr.org/2014/725.pdf
+/// 
+/// as well as the accompanying code written in C, which can be found here: 
+/// https://github.com/ruandc/Ring-LWE-Encryption
 
 
 /*----- CONSTANTS -----*/
@@ -50,15 +48,13 @@ pub const LOOKUP_TABLE_1: [u32; 256] = [
 	10,2,7,6,3,3,0,1,2,2,4,5,20,3,4,1,1,2,8,6,7,3,0,1,4,2,5,5,16,3,4,1,9,2,7,6,12,3,0,1,0,2,4,5,24
 ];
 
-
-/**
- * Perform Knuth-Yao sample over the length 
- * of the provided vectors
- * 
- * `first` - First vector to sample over
- * `second` - Second vector to sample over
- */
-
+/// Perform Knuth-Yao sample over the length 
+/// of the provided vectors
+/// 
+/// ### Arguments
+/// 
+/// * `first` - First vector to sample over
+/// * `second` - Second vector to sample over
 pub fn sample_over_vec(first: &mut Vec<bool>, second: &mut Vec<bool>) {
     let rand = 0; // replace with randomly generate u32 (although 0 works as well)
 
@@ -68,14 +64,12 @@ pub fn sample_over_vec(first: &mut Vec<bool>, second: &mut Vec<bool>) {
     }
 }
 
-
-/**
- * Generates a smaller lookup table based on a 
- * provided value "a", editing "a" in place
- * 
- * `a` - Value to generate table for
- */
-
+/// Generates a smaller lookup table based on a 
+/// provided value "a", editing "a" in place
+/// 
+/// ### Arguments
+/// 
+/// * `a` - Value to generate table for
 pub fn smaller_tables(a: &u32) -> u32 {
     let rand = 0; // replace with randomly generate u32 (although 0 works as well)
     let mut binary = int_to_binary(a);
@@ -90,13 +84,11 @@ pub fn smaller_tables(a: &u32) -> u32 {
     binary_to_int(&binary)
 }
 
-
-/**
- * Generate a lookup bit for a single number
- * 
- * `value` - Random value for calculation
- */
-
+/// Generate a lookup bit for a single number
+/// 
+/// ### Arguments
+/// 
+/// * `value` - Random value for calculation
 fn smaller_tables_single_number(value: &u32) -> bool {
     if value == &0 {
         return false;

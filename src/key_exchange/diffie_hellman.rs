@@ -5,26 +5,24 @@ use num_bigint::ToBigUint;
 use std::ops::{ Rem, Shr };
 use num_traits::{ One, Zero };
 
+/// Diffie Hellman 
 pub struct DiffieHellman {
-    pub p: BigUint, // prime modulus
-    pub g: BigUint, // generator
-    pub gx: BigUint, // self = G^X mod P
-    x: BigUint, // private value
-    px: BigUint, // previous X
-    v_i: BigUint, // Blinding value
-    v_f: BigUint, // Unblinding value
-    gy: BigUint, // peer = G^Y mod P
+    pub p: BigUint,         // prime modulus
+    pub g: BigUint,         // generator
+    pub gx: BigUint,        // self = G^X mod P
+    x: BigUint,             // private value
+    px: BigUint,            // previous X
+    v_i: BigUint,           // Blinding value
+    v_f: BigUint,           // Unblinding value
+    gy: BigUint,            // peer = G^Y mod P
     pub shared_key: BigUint // key = GY^X mod P
 }
 
 impl DiffieHellman {
 
-    /**
-     * Diffie-Hellman key agreement protocol. This implementation is a 
-     * Rust appropriation of the TLS Diffie-Hellman source code written
-     * in C, found at: https://github.com/ARMmbed/mbedtls/blob/master/library/dhm.c.
-     */
-    
+    /// Diffie-Hellman key agreement protocol. This implementation is a 
+    /// Rust appropriation of the TLS Diffie-Hellman source code written
+    /// in C, found at: https://github.com/ARMmbed/mbedtls/blob/master/library/dhm.c.
     pub fn new() -> Self {
         DiffieHellman { 
             p: BigUint::zero(), 
@@ -39,15 +37,13 @@ impl DiffieHellman {
         }
     }
 
-
-    /**
-     * Generate self based on peer values.
-     * 
-     * `peer_p` - Peer's public P modulus value
-     * `peer_g` - Peer's public G value
-     * `peer_gx` - Peer's public GX value
-     */
-
+    /// Generate self based on peer values.
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `peer_p` - Peer's public P modulus value
+    /// * `peer_g` - Peer's public G value
+    /// * `peer_gx` - Peer's public GX value
     pub fn new_from_peer(peer_p: &BigUint, peer_g: &BigUint, peer_gx: &BigUint) -> Self {
         DiffieHellman {
             p: peer_p.clone(),
@@ -62,16 +58,14 @@ impl DiffieHellman {
         }
     }
 
-
-    /**
-     * Sets up internal values. This is a separate method 
-     * from "new" because internal method referencing is not technically 
-     * possible in constructors. As such, it should chained with the "new" 
-     * command in practical use (see tests below for an example).
-     * 
-     * `bitlength` - Bit length of primes
-     */
-
+    /// Sets up internal values. This is a separate method 
+    /// from "new" because internal method referencing is not technically 
+    /// possible in constructors. As such, it should chained with the "new" 
+    /// command in practical use (see tests below for an example).
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `bitlength` - Bit length of primes
     pub fn setup(mut self, bitlength: usize) -> DiffieHellman {
         // check for peer value
         if self.g == BigUint::zero() {
@@ -110,13 +104,11 @@ impl DiffieHellman {
         self
     }
 
-
-    /**
-     * Generate a private X value that is as large as possible ( < P )
-     * 
-     * `bitlength` - Bit length of X
-     */
-
+    /// Generate a private X value that is as large as possible ( < P )
+    /// 
+    /// ### Arguments
+    ///  
+    /// * `bitlength` - Bit length of X
     fn generate_private_x(&mut self, bitlength: &usize) -> BigUint {
         let mut x = BigUint::zero();
 
@@ -131,33 +123,29 @@ impl DiffieHellman {
         x.clone()
     }
 
-
-    /**
-     * Verify sanity of parameter in relation to P modulus.
-     * Parameter should be: 2 <= parameter <= P - 2
-     * 
-     * For more information on the attack, see:
-     * http://www.cl.cam.ac.uk/~rja14/Papers/psandqs.pdf
-     * http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2005-2643
-     * 
-     * `parameter` - Parameter to check
-     */
-
+    /// Verify sanity of parameter in relation to P modulus.
+    /// Parameter should be: 2 <= parameter <= P - 2
+    /// 
+    /// For more information on the attack, see:
+    /// http://www.cl.cam.ac.uk/~rja14/Papers/psandqs.pdf
+    /// http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2005-2643
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `parameter` - Parameter to check
     fn check_range(&self, parameter: &BigUint) -> bool {
         parameter >= &2.to_biguint().unwrap() && 
         parameter <= &(&self.p - &2.to_biguint().unwrap())
     }
 
-
-    /**
-     * Update blinding values. Use the blinding method and optimisation 
-     * suggested in section 10 of: KOCHER, Paul C. Timing attacks on 
-     * implementations of Diffie-Hellman, RSA, DSS, and other systems. In:
-     * Advances in Cryptology-CRYPTO'96. Springer Berlin Heidelberg, 1996. p. 104-113.
-     * 
-     * `generator` - Random number generator
-     */
-
+    /// Update blinding values. Use the blinding method and optimisation 
+    /// suggested in section 10 of: KOCHER, Paul C. Timing attacks on 
+    /// implementations of Diffie-Hellman, RSA, DSS, and other systems. In:
+    /// Advances in Cryptology-CRYPTO'96. Springer Berlin Heidelberg, 1996. p. 104-113.
+    /// 
+    /// ### Arguments
+    /// 
+    /// * `generator` - Random number generator
     fn update_blinding(&mut self, mut generator: &mut OsRng) -> () {
 
         // Don't use any blinding the first time a particular X is used,
@@ -200,19 +188,17 @@ impl DiffieHellman {
         }
 
     }
-
-
-    /** 
-     * Derive and export the shared secret (G^Y)^X mod P.
-     * Random number generator is used to blind the input as a
-     * countermeasure against timing attacks. Blinding is
-     * automatically used if and only if our secret value X is
-     * re-used and costs nothing otherwise.
-     * 
-     * `generator` - Random number generator
-     * `peer_gx` - Peer's GY value
-     */
-
+ 
+    /// Derive and export the shared secret (G^Y)^X mod P.
+    /// Random number generator is used to blind the input as a
+    /// countermeasure against timing attacks. Blinding is
+    /// automatically used if and only if our secret value X is
+    /// re-used and costs nothing otherwise.
+    /// 
+    /// ### Arguments
+    ///  
+    /// * `generator` - Random number generator
+    /// * `peer_gx` - Peer's GY value
     pub fn generate_shared_key(&mut self, mut generator: &mut OsRng, peer_gx: &BigUint) -> BigUint {
         let mut key = BigUint::zero();
 

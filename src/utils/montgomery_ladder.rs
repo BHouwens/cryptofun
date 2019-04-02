@@ -18,24 +18,22 @@ use utils::ecc_curves::{ ECPGroup, ECPPoint };
 use utils::encoding::{ EndianOrdering, biguint_to_bitvec };
 
 
-/**
- * Multiplication with Montgomery ladder in x/z coordinates,
- * for curves in Montgomery form. Essentially the R = m * P 
- * process, where R is returned. 
- * 
- * This implementation is not a translation of TLS's library, 
- * as their Montgomery ladder is prone to M-fault and cache 
- * Flush + Reload attacks. More information on this type of 
- * attack can be found here: 
- * https://link.springer.com/chapter/10.1007%2F978-3-662-44709-3_5
- * 
- * 
- * `group` - Curve group to operate from
- * `m` - M value in calculation
- * `P` - P point in calculation
- * `rng` - Random number generator
- */
-
+/// Multiplication with Montgomery ladder in x/z coordinates,
+/// for curves in Montgomery form. Essentially the R = m * P 
+/// process, where R is returned. 
+/// 
+/// This implementation is not a translation of TLS's library, 
+/// as their Montgomery ladder is prone to M-fault and cache 
+/// Flush + Reload attacks. More information on this type of 
+/// attack can be found here: 
+/// https://link.springer.com/chapter/10.1007%2F978-3-662-44709-3_5
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `m` - M value in calculation
+/// * `P` - P point in calculation
+/// * `rng` - Random number generator
 pub fn multiply(group: &ECPGroup, m: &BigUint, P: &ECPPoint) -> ECPPoint {
 
     // Save PX and read from P before writing to R, in case P == R
@@ -69,14 +67,12 @@ pub fn multiply(group: &ECPGroup, m: &BigUint, P: &ECPPoint) -> ECPPoint {
     normalize_point(group, &final_point)
 }
 
-
-/**
- * Invert coordinate using P modulus
- * 
- * `group` - Curve group to operate from
- * `coordinate` - Coordinate to invert
- */
-
+/// Invert coordinate using P modulus
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `coordinate` - Coordinate to invert
 fn invert(group: &ECPGroup, coordinate: &BigInt) -> BigInt {
     let exponent = (group.p.clone() - 2.to_bigint().unwrap()).to_biguint().unwrap();
     let uint_modulus = group.p.to_biguint().unwrap();
@@ -84,14 +80,12 @@ fn invert(group: &ECPGroup, coordinate: &BigInt) -> BigInt {
     coordinate.to_biguint().unwrap().modpow(&exponent, &uint_modulus).to_bigint().unwrap()
 }
 
-
-/**
- * Normalize Montgomery x/z coordinates: X = X/Z, Z = 1
- * 
- * `group` - Curve group to operate from
- * `point` - Point to normalize
- */
-
+/// Normalize Montgomery x/z coordinates: X = X/Z, Z = 1
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `point` - Point to normalize
 fn normalize_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     let mut new_point = point.clone();
 
@@ -102,22 +96,20 @@ fn normalize_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     new_point
 }
 
-
-/**
- * Randomize projective x/z coordinates:
- * (X, Z) -> (l X, l Z) for random l
- *
- * This countermeasure was first suggested in:
- * CORON, Jean-S'ebastien. Resistance against differential power analysis
- * for elliptic curve cryptosystems. In : Cryptographic Hardware and
- * Embedded Systems. Springer Berlin Heidelberg, 1999. p. 292-302.
- * <http://link.springer.com/chapter/10.1007/3-540-48059-5_25>
- * 
- * `group` - Curve group to operate from
- * `point` - Point to randomize
- * `rng` - Random number generator
- */
-
+/// Randomize projective x/z coordinates:
+/// (X, Z) -> (l X, l Z) for random l
+///
+/// This countermeasure was first suggested in:
+/// CORON, Jean-S'ebastien. Resistance against differential power analysis
+/// for elliptic curve cryptosystems. In : Cryptographic Hardware and
+/// Embedded Systems. Springer Berlin Heidelberg, 1999. p. 292-302.
+/// <http://link.springer.com/chapter/10.1007/3-540-48059-5_25>
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `point` - Point to randomize
+/// * `rng` - Random number generator
 fn randomize_point(group: &ECPGroup, point: &ECPPoint, mut rng: &mut OsRng) -> ECPPoint {
     let mut new_point = point.clone();
     let mut l = primes::generate_random_biguint(&mut rng, &group.p.bits()).to_bigint().unwrap();
@@ -134,14 +126,12 @@ fn randomize_point(group: &ECPGroup, point: &ECPPoint, mut rng: &mut OsRng) -> E
     new_point
 }
 
-
-/**
- * Doubles a point on a Montgomery curve
- * 
- * `group` - Curve group to operate from
- * `point` - Point to double
- */
-
+/// Doubles a point on a Montgomery curve
+/// 
+/// ### Arguments
+///  
+/// * `group` - Curve group to operate from
+/// * `point` - Point to double
 fn double_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     let mut new_point = ECPPoint::new( &BigInt::zero(), None );
     let x_squared = &point.x * &point.x;
@@ -154,16 +144,14 @@ fn double_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     new_point
 }
 
-
-/**
- * Adds two points on a Montgomery curves together
- * 
- * `group` - Curve group to operate from
- * `first` - First point
- * `second` - Second point
- * `gx` - Generator's X coordinate
- */
-
+/// Adds two points on a Montgomery curves together
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `first` - First point
+/// * `second` - Second point
+/// * `gx` - Generator's X coordinate
 pub fn add_points(group: &ECPGroup, first: &ECPPoint, second: &ECPPoint, gx: &BigInt) -> ECPPoint {
     let mut new_point = ECPPoint::new( &BigInt::zero(), None );
     let x_mult = (&second.x * &first.x - &second.z * &first.z);

@@ -1,12 +1,10 @@
-/**
- * A util library used for Jacobian coordinate math.
- * 
- * Jacobian Coordinates are used to represent elliptic curve 
- * points on prime curves y^2 = x^3 + ax + b. They give a speed 
- * benefit over Affine Coordinates when the cost for field inversions 
- * is significantly higher than field multiplications. In Jacobian 
- * Coordinates the triple (X, Y, Z) represents the affine point (X / Z^2, Y / Z^3).
- */
+/// A util library used for Jacobian coordinate math.
+/// 
+/// Jacobian Coordinates are used to represent elliptic curve 
+/// points on prime curves y^2 = x^3 + ax + b. They give a speed 
+/// benefit over Affine Coordinates when the cost for field inversions 
+/// is significantly higher than field multiplications. In Jacobian 
+/// Coordinates the triple (X, Y, Z) represents the affine point (X / Z^2, Y / Z^3).
 
 use rand::OsRng;
 use std::ops::{ Shr, Shl, Mul, Sub, Add };
@@ -18,20 +16,19 @@ use utils::primes;
 use utils::ecc_curves::{ ECPPoint, ECPGroup };
 
 
-/**
- * For curves in short Weierstrass form, we do all the internal operations in
- * Jacobian coordinates.
- *
- * For multiplication, we'll use a comb method with coutermeasueres against
- * SPA, or timing attacks.
- *
- * Normalize Jacobian coordinates so that Z == 0 || Z == 1  (GECC 3.2.1)
- * Cost: 1N := 1I + 3M + 1S
- * 
- * `group` - Curve group to operate from
- * `point` - Point to normalize coords from
- */
-
+/// For curves in short Weierstrass form, we do all the internal operations in
+/// Jacobian coordinates.
+///
+/// For multiplication, we'll use a comb method with coutermeasueres against
+/// SPA, or timing attacks.
+///
+/// Normalize Jacobian coordinates so that Z == 0 || Z == 1  (GECC 3.2.1)
+/// Cost: 1N := 1I + 3M + 1S
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `point` - Point to normalize coords from
 pub fn normalize_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     let mut new_point = point.clone();
     
@@ -54,16 +51,14 @@ pub fn normalize_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     new_point
 }
 
-
-/**
- * Normalize jacobian coordinates of an array of points. Original source
- * code contains a potentially more efficient implementation, which is worth
- * inspecting at a later date
- * 
- * `group` - Curve group to operate from
- * `points` - Vector of points to normalize
- */
-
+/// Normalize jacobian coordinates of an array of points. Original source
+/// code contains a potentially more efficient implementation, which is worth
+/// inspecting at a later date
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `points` - Vector of points to normalize
 pub fn normalize_many(group: &ECPGroup, points: &mut Vec<ECPPoint>) -> () {
     for i in 0..points.len() {
         points[i] = normalize_point(group, &points[i]);
@@ -71,13 +66,12 @@ pub fn normalize_many(group: &ECPGroup, points: &mut Vec<ECPPoint>) -> () {
 }
 
 
-/**
- * Conditional point inversion: Point (Q) -> -Point = (Point.X, -Point.Y, Point.Z). 
- * Uses the fact that -Point.Y mod P = P - Point.Y unless Point.Y == 0
- * 
- * `group` - Curve group to operate from
- */
-
+/// Conditional point inversion: Point (Q) -> -Point = (Point.X, -Point.Y, Point.Z). 
+/// Uses the fact that -Point.Y mod P = P - Point.Y unless Point.Y == 0
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
 pub fn invert_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     let mut new_point = point.clone();
     let y_clone = new_point.y.clone().unwrap();
@@ -89,24 +83,22 @@ pub fn invert_point(group: &ECPGroup, point: &ECPPoint) -> ECPPoint {
     new_point
 }
 
-
-/**
- * Point doubling R = 2 P, Jacobian coordinates
- *
- * Based on http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-1998-cmo-2
-* in original TLS implementation.
-*
-* Standard optimizations are applied when curve parameter A is one of { 0, -3 }.
-*
-* Cost: 1D := 3M + 4S          (A ==  0)
-*             4M + 4S          (A == -3)
-*             3M + 6S + 1a     otherwise
-* 
-* `group` - Curve group to operate from
-* `R` - R point
-* `P` - P point
-*/
-
+/// Point doubling R = 2 P, Jacobian coordinates
+///
+/// Based on http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-1998-cmo-2
+/// in original TLS implementation.
+///
+/// Standard optimizations are applied when curve parameter A is one of { 0, -3 }.
+///
+/// Cost: 1D := 3M + 4S          (A ==  0)
+///             4M + 4S          (A == -3)
+///             3M + 6S + 1a     otherwise
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `R` - R point
+/// * `P` - P point
 pub fn double_point(group: &ECPGroup, P: &ECPPoint) -> ECPPoint {
     let mut new_point = ECPPoint::new( &BigInt::zero(), Some(BigInt::zero()) );
     let mut T = BigInt::zero();
@@ -160,31 +152,29 @@ pub fn double_point(group: &ECPGroup, P: &ECPPoint) -> ECPPoint {
     new_point
 }
 
-
-/**
- * Addition: R = P + Q, mixed affine-Jacobian coordinates (GECC 3.22)
- *
- * The coordinates of Q must be normalized (= affine),
- * but those of P don't need to. R is not normalized.
- *
- * Special cases: (1) P or Q is zero, (2) R is zero, (3) P == Q.
- * None of these cases can happen as intermediate step:
- * 
- * - at each step, P, Q and R are multiples of the base point, the factor
- *   being less than its order, so none of them is zero;
- * 
- * - Q is an odd multiple of the base point, P an even multiple,
- *   due to the choice of precomputed points in the modified comb method.
- * 
- * So branches for these cases do not leak secret information.
- *
- * Cost: 1A := 8M + 3S
- * 
- * `group` - Curve group to operate from
- * `P` - P point
- * `Q` - Q point
- */
-
+/// Addition: R = P + Q, mixed affine-Jacobian coordinates (GECC 3.22)
+///
+/// The coordinates of Q must be normalized (= affine),
+/// but those of P don't need to. R is not normalized.
+///
+/// Special cases: (1) P or Q is zero, (2) R is zero, (3) P == Q.
+/// None of these cases can happen as intermediate step:
+/// 
+/// - at each step, P, Q and R are multiples of the base point, the factor
+///   being less than its order, so none of them is zero;
+/// 
+/// - Q is an odd multiple of the base point, P an even multiple,
+///   due to the choice of precomputed points in the modified comb method.
+/// 
+/// So branches for these cases do not leak secret information.
+///
+/// Cost: 1A := 8M + 3S
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `P` - P point
+/// * `Q` - Q point
 pub fn add(group: &ECPGroup, P: &ECPPoint, mut Q: &mut ECPPoint) -> ECPPoint {
     // Trivial cases: P == 0 or Q == 0 (case 1)
     if P.z == BigInt::zero() {
@@ -207,7 +197,6 @@ pub fn add(group: &ECPGroup, P: &ECPPoint, mut Q: &mut ECPPoint) -> ECPPoint {
     t_2 = group.mod_p( &t_2.clone().mul(&Q.y.clone().unwrap()) );
     t_1 = group.mod_increase( &t_1.clone().sub(&P.x.clone()) );
     t_2 = group.mod_increase( &t_2.clone().sub(&P.y.clone().unwrap()) );
-
 
     // All other cases
     let z = group.mod_p( &P.z.clone().mul(t_1.clone()) );
@@ -234,23 +223,22 @@ pub fn add(group: &ECPGroup, P: &ECPPoint, mut Q: &mut ECPPoint) -> ECPPoint {
 }
 
 
-/**
- * Randomize jacobian coordinates:
- * (X, Y, Z) -> (l^2 X, l^3 Y, l Z) for random l
- * This is sort of the reverse operation of normalize_point().
- * 
- * This is a security countermeasure implemented as in:
- * 
- * CORON, Jean-S'ebastien. Resistance against differential power analysis
- * for elliptic curve cryptosystems. In: Cryptographic Hardware and
- * Embedded Systems. Springer Berlin Heidelberg, 1999. p. 292-302.
- * <http://link.springer.com/chapter/10.1007/3-540-48059-5_25>
- * 
- * `group` - Curve group to operate from
- * `P` - point to randomize
- * `rng` - Random number generator
- */
-
+/// Randomize jacobian coordinates:
+/// (X, Y, Z) -> (l^2 X, l^3 Y, l Z) for random l
+/// This is sort of the reverse operation of normalize_point().
+/// 
+/// This is a security countermeasure implemented as in:
+/// 
+/// CORON, Jean-S'ebastien. Resistance against differential power analysis
+/// for elliptic curve cryptosystems. In: Cryptographic Hardware and
+/// Embedded Systems. Springer Berlin Heidelberg, 1999. p. 292-302.
+/// <http://link.springer.com/chapter/10.1007/3-540-48059-5_25>
+/// 
+/// ### Arguments
+/// 
+/// * `group` - Curve group to operate from
+/// * `P` - point to randomize
+/// * `rng` - Random number generator
 pub fn randomize_point(group: &ECPGroup, P: &ECPPoint, mut rng: &mut OsRng) -> ECPPoint {
     let mut new_point = P.clone();
     let p_size = &group.p.bits();
